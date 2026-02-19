@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente de Ventas Amazon</title>
+    <style>
+        :root {
+            --primary-color: #232f3e;
+            /* Color Amazon */
+            --secondary-color: #febd69;
+            /* Botón Amazon */
+            --bg-color: #f3f3f3;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Contenedor del Chat */
+        #chat-container {
+            width: 400px;
+            height: 600px;
+            background: var(--white);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Cabecera */
+        #chat-header {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        /* Área de Mensajes */
+        #chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--secondary-color);
+            color: #333;
+            border-bottom-right-radius: 2px;
+        }
+
+        .bot-message {
+            align-self: flex-start;
+            background-color: #e9e9eb;
+            color: #333;
+            border-bottom-left-radius: 2px;
+        }
+
+        /* Área de Input */
+        #chat-input-container {
+            padding: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        /* Loading dots */
+        .typing {
+            font-style: italic;
+            color: #999;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="chat-container">
+        <div id="chat-header">Asistente Amazon RAG</div>
+        <div id="chat-messages">
+            <div class="message bot-message">¡Hola! Soy tu asistente de ventas. ¿Qué producto buscas hoy?</div>
+        </div>
+        <div id="chat-input-container">
+            <input type="text" id="user-input" placeholder="Ej: Busco una laptop gamer..."
+                onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        const webhookUrl = 'TU_URL_DE_WEBHOOK_PRODUCCION_DE_N8N';
+
+        async function sendMessage() {
+            const inputElement = document.getElementById('user-input');
+            const message = inputElement.value.trim();
+            if (!message) return;
+
+            // Añadir mensaje del usuario a la pantalla
+            addMessage(message, 'user-message');
+            inputElement.value = '';
+
+            // Mostrar indicador de carga
+            const loadingId = addMessage('Buscando en catálogo...', 'bot-message typing');
+
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+
+                // Eliminar indicador de carga
+                document.getElementById(loadingId).remove();
+
+                // Mostrar respuesta de la IA (campo 'output' del Agent de n8n)
+                // Se asume que el nodo AI Agent devuelve el texto en data.output
+                addMessage(data.output || "Lo siento, no pude procesar tu solicitud.", 'bot-message');
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById(loadingId).innerText = "Error de conexión con el servidor.";
+            }
+        }
+
+        function addMessage(text, className) {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            const id = 'msg-' + Date.now();
+            messageDiv.id = id;
+            messageDiv.className = 'message ' + className;
+            messageDiv.innerText = text;
+            chatMessages.appendChild(messageDiv);
+
+            // Scroll automático al final
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return id;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+
+</body>
+
+</html>
